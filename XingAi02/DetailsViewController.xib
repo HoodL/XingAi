@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="6250" systemVersion="14B25" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES">
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="6244"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="DetailsViewController">
+            <connections>
+                <outlet property="bgImageView" destination="Cv3-5g-My0" id="jXy-rp-yZB"/>
+                <outlet property="logoImageView" destination="9bH-LT-6kG" id="BI4-Z7-Ece"/>
+                <outlet property="mainScrollView" destination="njM-Ri-0cx" id="anI-rn-w42"/>
+                <outlet property="returnButton" destination="jXy-ZI-y8U" id="o9t-hJ-KlQ"/>
+                <outlet property="view" destination="i5M-Pr-FkT" id="sfx-zR-JGt"/>
+            </connections>
+        </placeholder>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <view clearsContextBeforeDrawing="NO" contentMode="scaleToFill" id="i5M-Pr-FkT">
+            <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="功能页面背景.png" translatesAutoresizingMaskIntoConstraints="NO" id="Cv3-5g-My0">
+                    <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
+                </imageView>
+                <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="全局logo.png" translatesAutoresizingMaskIntoConstraints="NO" id="9bH-LT-6kG">
+                    <rect key="frame" x="126" y="25" width="68" height="68"/>
+                </imageView>
+                <scrollView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="njM-Ri-0cx">
+                    <rect key="frame" x="0.0" y="88" width="320" height="568"/>
+                    <connections>
+                        <outlet property="delegate" destination="-1" id="rDV-Jv-gBp"/>
+                    </connections>
+                </scrollView>
+                <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jXy-ZI-y8U">
+                    <rect key="frame" x="19" y="25" width="44" height="44"/>
+                    <state key="normal" backgroundImage="返回按钮.png">
+                        <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                    </state>
+                    <connections>
+                        <action selector="clickReturnButton:" destination="-1" eventType="touchUpInside" id="gsT-zL-Pzd"/>
+                    </connections>
+                </button>
+            </subviews>
+            <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+            <simulatedScreenMetrics key="simulatedDestinationMetrics" type="retina4"/>
+        </view>
+    </objects>
+    <resources>
+        <image name="全局logo.png" width="68" height="68"/>
+        <image name="功能页面背景.png" width="320" height="568"/>
+        <image name="返回按钮.png" width="44" height="44"/>
+    </resources>
+</document>

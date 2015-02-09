@@ -14,7 +14,6 @@
 
 @interface CalendarHomeViewController : CalendarViewController
 
-@property (nonatomic, strong) NSString *calendartitle;//设置导航栏标题
 //@property (weak, nonatomic) IBOutlet UIBarButtonItem *returnButton;
 
 - (void)setAirPlaneToDay:(int)day ToDateforString:(NSString *)todate;//飞机初始化方法

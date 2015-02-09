@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="6252" systemVersion="14B25" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+    <entity name="ResultData" representedClassName="ResultDataManagedObject" syncable="YES">
+        <attribute name="averageHz" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="averageIn" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="maxHz" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="maxIn" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="startDate" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="totalCount" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
+        <attribute name="totalHeat" optional="YES" attributeType="Double" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="totalTime" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
+    </entity>
     <entity name="SportsData" representedClassName="DataManagedObject" syncable="YES">
         <attribute name="count" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
         <attribute name="date" optional="YES" attributeType="Date" syncable="YES"/>
-        <attribute name="group" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
         <attribute name="heat" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
         <attribute name="hz" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
         <attribute name="intensity" optional="YES" attributeType="Float" defaultValueString="0.0" syncable="YES"/>
@@ -14,7 +23,8 @@
         <attribute name="score" optional="YES" attributeType="Integer 64" defaultValueString="0" syncable="YES"/>
     </entity>
     <elements>
-        <element name="SportsData" positionX="-63" positionY="-18" width="128" height="148"/>
+        <element name="SportsData" positionX="-63" positionY="-18" width="128" height="133"/>
         <element name="UserScore" positionX="-63" positionY="36" width="128" height="73"/>
+        <element name="ResultData" positionX="-63" positionY="36" width="128" height="165"/>
     </elements>
 </model>

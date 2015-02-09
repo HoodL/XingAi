@@ -33,6 +33,8 @@
 @property (retain,nonatomic)UIImageView *bottom;
 @property (retain,nonatomic)UILabel *currentMonthData;
 @property (retain,nonatomic)UILabel *totalData;
+@property (nonatomic, weak) NSString *calendartitle;//设置导航栏标题
+
 @end
 
 @implementation CalendarHomeViewController
@@ -127,8 +129,9 @@
         int year= [components year];
         int month=[components month];
         CalendarLogic *logic=[[CalendarLogic alloc]init];
-      int currentMonthData=  [[logic findDataFromCoreDataWithYearAndMonth:year Month:month] count];
-        int allData= [[logic findAllSportsDataFromCoreData] count];
+        
+        int currentMonthData=[[logic findDataWithYearAndMonth:year Month:month] count];
+        int allData= [[logic findAllResultData] count];
         dispatch_async(dispatch_get_main_queue(), ^{
             _currentMonthData.text=[NSString stringWithFormat:@"%d",currentMonthData];
             _totalData.text=[NSString stringWithFormat:@"%d",allData];
@@ -136,9 +139,10 @@
         });
         
     });
+    
     [[SliderViewController sharedSliderController].view.window
       showHUDWithText:@"数据加载中" Type:ShowLoading Enabled:YES];
-     
+    
        dispatch_queue_t queue=dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     dispatch_async(queue, ^{ daynumber = day;//天数
         optiondaynumber = 1;//选择一个后返回数据对象
@@ -180,7 +184,7 @@
 - (NSMutableArray *)getMonthArrayOfDayNumber:(int)day ToDateforString:(NSString *)todate
 {
     
-    NSDate *date = [NSDate date];
+    //NSDate *date = [NSDate date];
     
     NSDate *selectdate  = [NSDate date];
     
@@ -192,7 +196,7 @@
     
     super.Logic = [[CalendarLogic alloc]init];
     
-    return [super.Logic reloadCalendarView:date selectDate:selectdate  needDays:day];
+    return [super.Logic reloadCalendarView:nil selectDate:selectdate  needDays:day];
 }
 
 
@@ -209,7 +213,10 @@
 -(void)clickReturnButton
 {
 //    [self.navigationController popViewControllerAnimated:YES];
-    
+   [self.view.window showHUDWithText:nil Type:ShowDismiss Enabled:YES];
+//    [[SliderViewController sharedSliderController].view.window
+//     showHUDWithText:nil Type:ShowDismiss Enabled:YES];
+
     [self.navigationController popViewControllerAnimated:YES];
 }
 - (void)handlePanGesture:(UIPanGestureRecognizer *)recognizer

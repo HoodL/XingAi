@@ -8,6 +8,7 @@
 
 #import "DetailsViewController.h"
 #import "SportsDataDAO.h"
+#import "ResultDataDAO.h"
 
 @interface DetailsViewController ()<UIScrollViewDelegate>
 {
@@ -38,7 +39,7 @@
     _mainScrollView.showsHorizontalScrollIndicator=YES;
     _mainScrollView.showsVerticalScrollIndicator=NO;
     [self initView];
-   [self initLabel];
+    [self initLabel];
 }
 
 -(void)initView {
@@ -92,7 +93,6 @@
     p.x=(SCREEN_WIDTH)*n;
     NSLog(@"n=%d",n);
     NSLog(@"%f,%f",_mainScrollView.frame.size.width,_mainScrollView.frame.size.width*n);
-    
     NSLog(@"p.x=%f,p.y=%f",p.x,p.y);
 }
 
@@ -142,7 +142,7 @@
     
     //最大强度和平均强度
     UILabel *maxIntensity=[[UILabel alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-120)/2, 140, 120, 40)];
-    maxIntensity.text=@"最大强度(mg)";
+    maxIntensity.text=@"最大强度(G)";
     maxIntensity.backgroundColor=[UIColor clearColor];
     maxIntensity.textAlignment=NSTextAlignmentCenter;
     maxIntensity.textColor=[UIColor colorWithRed:224.0/255 green:184.0/255 blue:25.0/255 alpha:1.0];
@@ -164,7 +164,7 @@
     [_rangeView addSubview:averageIntensityData];
     
     UILabel *averageIntensity=[[UILabel alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-120)/2, 240, 120, 40)];
-    averageIntensity.text=@"平均强度(mg)";
+    averageIntensity.text=@"平均强度(G)";
     averageIntensity.textAlignment=NSTextAlignmentCenter;
     averageIntensity.backgroundColor=[UIColor clearColor];
     averageIntensity.textColor=[UIColor colorWithRed:224.0/255 green:184.0/255 blue:25.0/255 alpha:1.0];
@@ -241,26 +241,36 @@
     
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     dispatch_async(queue,^{
-      SportsData *theLastData=[self getLastDataFromCoreDate];
-        NSInteger maxIntensity=[self getLastGroupMaxCount];
-        CGFloat averageIntensity=[self getLastGroupAverageCount];
-        CGFloat max_Hz=[self getLastGroupMaxHz];
-        CGFloat average_Hz=[self getLastGroupAverageHz];
+        ResultData *data=[self getLastResultData];
+        
+        NSInteger maxIntensity=[data.maxIn floatValue];
+        CGFloat averageIntensity=[data.averageIn floatValue];
+        CGFloat max_Hz=[data.maxHz floatValue];
+        CGFloat average_Hz=[data.averageHz floatValue];
         
         dispatch_async(dispatch_get_main_queue(),
         ^{
-        _count.text=[NSString stringWithFormat:@"%ld",(long)[theLastData.count integerValue]];
-        _time.text=[self transformTimeFormat:[theLastData.time integerValue]];
-        _intensity.text=[NSString stringWithFormat:@"%ld",(long)[theLastData.intensity integerValue]];
-        _heat.text=[NSString stringWithFormat:@"%f",[theLastData.heat floatValue]];
-        _Hz.text=[NSString stringWithFormat:@"%f",[theLastData.hz floatValue]];
+        _count.text=[NSString stringWithFormat:@"%ld",(long)[data.totalCount integerValue]];
+        _time.text=[self transformTimeFormat:[data.totalTime integerValue]];
+//        _intensity.text=[NSString stringWithFormat:@"%ld",(long)[data.intensity integerValue]];
+        _heat.text=[NSString stringWithFormat:@"%0.1f",[data.totalHeat floatValue]];
+//        _Hz.text=[NSString stringWithFormat:@"%0.1f",[theLastData.hz floatValue]];
+            
             maxIntensityData.text=[NSString stringWithFormat:@"%ld",(long)maxIntensity];
-            averageIntensityData.text=[NSString stringWithFormat:@"%f",averageIntensity];
+            averageIntensityData.text=[NSString stringWithFormat:@"%0.1f",averageIntensity];
             maxHzData.text
-            =[NSString stringWithFormat:@"%f",max_Hz];
-            averageHzData.text=[NSString stringWithFormat:@"%f",average_Hz];
+            =[NSString stringWithFormat:@"%0.1f",max_Hz];
+            averageHzData.text=[NSString stringWithFormat:@"%0.1f",average_Hz];
         });
     });
+}
+#pragma mark--获取最近一次的ResultData
+-(ResultData*)getLastResultData
+{
+    ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    NSMutableArray *dataList=  [DAO findAll];
+    ResultData *data=[dataList lastObject];
+    return data;
 }
 
 -(SportsData*)getLastDataFromCoreDate
@@ -359,6 +369,7 @@
     return average;
 }
 
+#pragma mark-- 时间选择器
 -(NSString*)transformTimeFormat:(NSInteger)seconds
 {
     NSInteger hour=seconds/3600;

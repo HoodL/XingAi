@@ -81,6 +81,7 @@ static UserScoreDAO *shareManager;
     }
     return nil;
 }
+
 -(int) remove:(UserScore *)model
 {
     NSManagedObjectContext *cxt=[self managedObjectContext];

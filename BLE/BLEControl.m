@@ -9,10 +9,13 @@
 #import "BLEControl.h"
 #import "AppDelegate.h"
 #import "SliderViewController.h"
+#import "ResultDataDAO.h"
+
 @interface BLEControl()
 {
 }
-
+@property(retain,nonatomic)ResultData *syncResultData;
+@property(retain,nonatomic)NSDate *theSecondthStartDate;
 @end
 @implementation BLEControl
 
@@ -34,10 +37,12 @@
         _peripherals = [[NSMutableArray alloc]init];
         _services = [[NSMutableArray alloc]init];
         _characteristics = [[NSMutableArray alloc]init];
-        _activePeripheralState=_activePeripheral.state;
+        //_activePeripheralState=_activePeripheral.state;
         _dataCounter=0;
-    
-        [self.activePeripheral addObserver:[SliderViewController sharedSliderController].MainVC  forKeyPath:@"state" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld context:@"statechanged"];
+        _syncResultData=[[ResultData alloc]init];
+        _sportsSeconds=0;
+        _butteryPercent=100;
+//        [self.activePeripheral addObserver:[SliderViewController sharedSliderController].MainVC  forKeyPath:@"state" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld context:@"statechanged"];
         
     }
     return self;
@@ -56,7 +61,6 @@
     //});
     //[self.peripherals removeAllObjects];
 }
-
 
 -(void) connectPeripheral:(CBPeripheral *)peripheral;
 {
@@ -78,8 +82,17 @@
         case CBCentralManagerStatePoweredOn:
         {
             NSLog(@"蓝牙已经开启，请扫描外设!");
-//            NSArray *uuidArray = [NSArray arrayWithObjects:[CBUUID UUIDWithString:@"1899"],nil];
-//            [_CM scanForPeripheralsWithServices:uuidArray options:@{CBCentralManagerScanOptionAllowDuplicatesKey : @NO }];
+            if (self.delegate&&self.activePeripheral) {
+                [self.CM connectPeripheral:self.activePeripheral options:nil];
+
+            }
+        }
+            break;
+        case CBCentralManagerStatePoweredOff:
+        {
+            NSLog(@"手机蓝牙关闭了,建议你打开!");
+            UIAlertView *alertView=[[UIAlertView alloc]initWithTitle:@"手机蓝牙关闭了,建议你打开!" message:nil delegate:nil cancelButtonTitle:@"知道了" otherButtonTitles: nil];
+            [alertView show];
         }
             break;
         default:
@@ -90,7 +103,6 @@
 //查到外设后，停止扫描，连接设备
 -(void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary *)advertisementData RSSI:(NSNumber *)RSSI
 {
-    
     if(![self.peripherals containsObject:peripheral])
     {
         [self.peripherals addObject:peripheral];
@@ -98,10 +110,13 @@
         NSLog(@"%@",[NSString stringWithFormat:@"已发现 peripheral: %@ rssi: %@, UUID: %@ advertisementData: %@ ", peripheral, RSSI,
                      peripheral.identifier.UUIDString,advertisementData]);
         NSLog(@"%@",peripheral);
-        NSLog(@"name=%@,state=%d",peripheral.name,peripheral.state);
+        NSLog(@"name=%@",peripheral.name);
     }
-    
-    [self.delegate addPeripherals:peripheral];
+//    BLEDevice *device=[[BLEDevice alloc]init];
+//    device.peripheral=peripheral;
+//    device.isConnected=[peripheral isConnected];
+//    device.butteryPercent=101;
+    [self.delegate2 addPeripherals:peripheral];
         /*BOOL replace = NO;
     //    // Match if we have this device from before
         for (int i=0; i < _peripherals.count; i++) {
@@ -180,17 +195,20 @@
          {
              return ;
          }
+        
         if (c.isNotifying==NO) {
             NSLog(@"蓝牙不广播!");
             //return ;
         }
+        
         if ([c.UUID isEqual:[CBUUID UUIDWithString:@"2A99"]]) {
             _writeCharacteristic = c;
-            NSLog(@"c=%@",c);
-            NSLog(@"characteristic.properties=%d",c.properties);
+           // NSLog(@"c=%@",c);
+           // NSLog(@"characteristic.properties=%u",c.properties);
             [_activePeripheral setNotifyValue:YES forCharacteristic:_writeCharacteristic];
         }
-        if ([c.UUID isEqual:[CBUUID UUIDWithString:@"2A99"]]) {
+        
+        if ([c.UUID isEqual:[CBUUID UUIDWithString:@"2A19"]]) {
             [_activePeripheral readValueForCharacteristic:c];
         }
         
@@ -199,10 +217,19 @@
         }
         [_characteristics addObject:c];
     }
-    [self.delegate removeLinkingHUDImageView];
-    
+   // [self synTime];
+    //[self  synHistoryData];
+    /*NSLog(@"self.delegate=%@",self.delegate);
+    if (!self.delegate) {
+        [self.delegate2 removeLinkingHUDImageView];
+    }
+    else {
+        [self.delegate setTimerRun];
+    }*/
+    if (self.delegate) {
+        [self getRealTimeData];
+    }
 }
-
 
 //获取外设发来的数据，不论是read和notify,获取数据都是从这个方法中读取。
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
@@ -211,13 +238,13 @@
     UInt16 characteristicUUID = [self CBUUIDToInt:characteristic.UUID];
     //NSLog(@"\n收到:characteristicUUID=%d",characteristicUUID);
     NSLog(@"\n收到蓝牙发来的数据包:%@",characteristic.value);
-    _dataCounter++;
-    if (_dataCounter==2) {
-        [self synTime];
-    }
-    if (_dataCounter<=2) {
-        return;
-    }
+//    _dataCounter++;
+//    if (_dataCounter==2) {
+//        [self synTime];
+//    }
+//    if (_dataCounter<=2) {
+//        return;
+//    }
     
     if (!error) {
         switch (characteristicUUID) {
@@ -225,66 +252,218 @@
             {
                 uint8_t buf[4096] = {0};
                 [characteristic.value getBytes:buf];
-                
+                if (buf[0]!=0xBB) {
+                    return;
+                }
                 if (buf[2]==0x00) {
                     if (buf[3]==0x01) {
                         NSLog(@"同步时间成功!");
                     }
                     else NSLog(@"同步时间失败");
                 }
+                
                 else  if (buf[2]==0x01) {
                     if (buf[3]==0x00) {
+                        [self.delegate setTimerFire];
                         [self buildSportsTimer];
                         [self setsportsTimerRun];
+                        // buf[4]开始为加速度值
                         uint8_t count1=buf[4];
                         uint8_t count2=buf[5];
                         NSInteger count=count1*16*16+count2;
+                        NSLog(@"self.delegate=%@",_delegate);
+                        if (!self.delegate) {
+                            NSLog(@"self.delegate=%@",_delegate);
+                            NSLog(@"我还没请求实时呢就发实时数据干嘛?");
+                            return;
+                        }
                         [self.delegate setTimerFire];
                         //[self.delegate setZeroTimerFire];
-                        uint8_t A1=buf[6];
-                        uint8_t A2=buf[7];
-                        float Hz=(100.00/A2);
-                        [self saveSportsDataWithCoreData:A1 Hz:Hz Count:count Time:_sportsSeconds Heat:0.0 Date:[NSDate date] Group:0];
+                        float A1=(float)buf[6]*30/1024;//强度G
+                        float heat=((float)_sportsSeconds/8.0)*104;
+                        float Hz=100.0/((buf[7]<<8)+buf[8]);
+                        [self saveSportsDataWithCoreData:A1 Hz:Hz Count:count Time:_sportsSeconds Heat:heat Date:[NSDate date] Group:0];
                         [self.delegate addCountNum:count Intensity:A1 Hz:Hz];
-                        NSLog(@"实时次数为:%d",count);
-                        NSLog(@"实时强度为:%d",A1);
+                        NSLog(@"实时次数为:%ld",(long)count);
+                        NSLog(@"实时强度为:%f",A1);
                         NSLog(@"实时频率为:%f", Hz);
                         [self.delegate1 addCountData:A1];
-                        [self.delegate setTimerRun];
-                        [self.delegate setZeroTimerRun];
-
+                        //[self.delegate setTimerRun];
                     }
-                    else {
-                        NSLog(@"实时传输结束");
+                    
+                    else if(buf[3]==0x01) {
+                        NSLog(@"实时传输暂停了,并不一定战斗结束");
                     }
+                    
+                    else if(buf[3]==0x02)
+                    {
+                        NSLog(@"本次运动结束,会收到两个数据包");
+                        if(buf[1]==0x0A) {
+                            NSLog(@"收到第一个运动结束包");
+                            NSDateComponents *comps = [[NSDateComponents alloc]init];
+                            comps.year=((int)buf[4]+2000);comps.month=buf[5];comps.day=buf[6];
+                            comps.hour=buf[7];
+                            comps.minute=buf[8];comps.second=buf[9];
+                            NSCalendar *calendar = [[NSCalendar alloc]initWithCalendarIdentifier:NSGregorianCalendar];
+                            NSDate *startDate = [calendar dateFromComponents:comps];
+                            _syncResultData.startDate=startDate;
+                            _syncResultData.totalTime
+                            =[NSNumber numberWithInteger:((buf[10]<<8)+buf[11])];
+                        }
+                        
+                        else{
+                            NSLog(@"收到第二个运动结束包");
+                            
+                            if(_syncResultData.startDate==nil) {
+                                NSLog(@"咦?怎么直接就收到第二个运动结束包了?");
+                                return ;
+                            }
+                            
+                            NSInteger countData=(buf[4]<<8)+buf[5];
+                            
+                            _syncResultData.totalCount=[NSNumber numberWithInteger:countData];
+                            if (countData==0) {
+                                _syncResultData.totalHeat=
+                                [NSNumber numberWithFloat:0.0f];
+                            }
+                            else {
+_syncResultData.totalHeat=[NSNumber numberWithFloat:(buf[6]<<24)+(buf[7]<<16)+(buf[8]<<8)+buf[9]];
+                            }
+                            _syncResultData.averageIn
+                            =[NSNumber numberWithFloat
+                              :(float)buf[10]*30/1024];
+                            _syncResultData.maxIn
+                            =[NSNumber numberWithFloat
+                              :(float)buf[11]*30/1024];
+                            
+//                            int averagerHz=((buf[12]<<8)+buf[13]);
+//                            int maxHz=((buf[14]<<8)+buf[15]);
+//                            if (averagerHz==0) {
+//                                _syncResultData.averageHz=
+//                                [NSNumber numberWithFloat:100.0/((buf[12]<<8)+buf[13])];
+//                            }
+                            _syncResultData.averageHz=
+                            [NSNumber numberWithFloat:100.0/((buf[12]<<8)+buf[13])];
+                            _syncResultData.maxHz=
+                            [NSNumber numberWithFloat:100.0/((buf[14]<<8)+buf[15])];
+                            [self saveResultData:_syncResultData];
+                            if (self.delegate) {
+                                [self.delegate autoPopCurrentVC];
+                                self.delegate=nil;
+                                [_sportsTimer setFireDate:[NSDate distantFuture]];
+                                _sportsSeconds=0;
+                            }
+                        }
+                    }
+                    else {NSLog(@"进入未知领域");}
                 }
+                
                 else if (buf[2]==0x02)
                 {
                     if (buf[3]==0x00)
                     {
                         NSLog(@"没有需要同步的数据哦");
+                        UIAlertView *alertView=[[UIAlertView alloc]initWithTitle:@"没有需要同步的数据哦" message:nil delegate:nil cancelButtonTitle:@"知道了" otherButtonTitles:nil];
+                        [alertView show];
                     }
+                    
                     else if (buf[3]==0x01)
                     {
-                        NSLog(@"开始传输历史运动数据");
-                    }
-                    else if(buf[3]==0x02)
-                    {
-                        NSLog(@"传输运动结束时间");
+                        if (buf[1]==0x10) {
+                        NSLog(@"收到第一个数据包");
+                            _syncResultData.totalTime=[NSNumber numberWithInteger:(buf[10]<<8)+buf[11]];
+                            _syncResultData.totalCount=[NSNumber numberWithInteger:(buf[12]<<8)+buf[13]];
+                            _syncResultData.totalHeat=[NSNumber numberWithFloat:(buf[14]<<24)+(buf[15]<<16)+(buf[16]<<8)+buf[17]];
+                        }
+                        else if(buf[1]==0x0E) {
+                           if(_syncResultData.totalTime==nil)
+                           {
+                               NSLog(@"同步历史的时候你怎么直接发第二个数据包过来了?");
+                               return;
+                           }
+                            NSDateComponents *comps = [[NSDateComponents alloc]init];
+                            comps.year=((int)buf[4]+2000);comps.month=buf[5];
+                            comps.day=buf[6];
+                            
+                            comps.hour=buf[7];
+                            comps.minute=buf[8];comps.second=buf[9];
+                            NSCalendar *calendar = [[NSCalendar alloc]initWithCalendarIdentifier:NSGregorianCalendar];
+                            NSDate *startDate = [calendar dateFromComponents:comps];
+                            //_theSecondthStartDate=startDate;
+                            
+                            if(_syncResultData.averageIn!=nil&&[_syncResultData.startDate isEqual:startDate])
+                            {
+                                NSLog(@"又收到第二个数据包,重复了,return");
+                                return;
+                            } NSLog(@"收到第二个数据包,没有重复");
+                            
+                NSNumber *averageIn=[NSNumber numberWithFloat:(float)buf[10]*30/1024];
+                NSNumber *maxIn=[NSNumber numberWithFloat:(float)buf[11]*30/1024];
+                NSNumber *averageHz=[NSNumber numberWithFloat:100.0/((buf[12]<<8)+buf[13])];
+                NSNumber *maxHz=[NSNumber numberWithFloat:100.0/((buf[14]<<8)+buf[15])];
+                if ([_syncResultData.startDate isEqual:startDate]&&[_syncResultData.averageIn
+                    isEqual:averageIn]&&[_syncResultData.maxIn isEqual:maxIn]&&
+                    [_syncResultData.averageHz isEqual:averageHz]&&
+                    [_syncResultData.maxHz isEqual:maxHz])
+                {
+                    NSLog(@"又收到第二个数据包,重复了,return");
+                    return;
+                    
+                }
+                            
+                _syncResultData.startDate=startDate;
+                _syncResultData.averageIn=averageIn;
+                _syncResultData.maxIn=maxIn;
+                _syncResultData.averageHz=averageHz;
+                _syncResultData.maxHz=maxHz;
+                            
+                [self saveResultData:_syncResultData];
+                            UIAlertView *alertView=[[UIAlertView alloc]initWithTitle:@"同步成功" message:nil delegate:nil cancelButtonTitle:@"好" otherButtonTitles: nil];
+                            [alertView show];
+                        }
                     }
                 }
+                
                 else if(buf[2]==0x03)
                 {
-                    NSLog(@"同步当前电量");
+                    NSLog(@"同步当前电量,电池电量百分比为:%d%%",buf[3]);
+                    self.butteryPercent=buf[3];
+                    if (self.delegate2) {
+                        [self.delegate2 synButteryPercent:buf[3]];
+
+                    }
+                    
+                    if (_sportsSeconds==0) {
+                        [self synTime];
+                        //[self  synHistoryData];
+                        if (!self.delegate) {
+                            [self.delegate2 removeLinkingHUDImageView];
+                        }
+                        else {
+                            [self.delegate setTimerRun];
+                        }
+                    }
                 }
+            }
+               /* case 0x180f:
+            {
+                uint8_t buf[4096] = {0};
+                [characteristic.value getBytes:buf];
+                if (buf[0]!=0xBB) {
+                    return;
+                }
+                NSLog(@"同步当前电量");
+                NSLog(@"\n收到蓝牙发来的数据包:%@",characteristic.value);
+                NSLog(@"同步当前电量,电池电量百分比为:%d%%",buf[3]);
             }
         break;
             default:
-                break;
+                break;*/
         }
     }
    // [self.delegate setTimerRun];
 }
+
     -(UInt16) CBUUIDToInt:(CBUUID *) UUID {
         char b1[16];
         [UUID.data getBytes:b1];
@@ -292,7 +471,9 @@
     }
 
 //中心读取外设实时数据
+
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+    NSLog(@"收到通知:%@,%@",characteristic,characteristic.value);
     NSLog(@"Error changing notification state: %@", error.localizedDescription);
     
     if (error) {
@@ -351,36 +532,61 @@
         NSInteger hour = [comps hour];
         NSInteger min = [comps minute];
         NSInteger sec =  [comps second];
-        uint8_t  SetYear = (year/10)*16+year%10;
-        uint8_t SetMonth = (month/10)*16+month%10;
-        uint8_t SetDay = (day/10)*16+day%10;
-        uint8_t SetHour = (hour/10)*16+hour%10;
-        uint8_t SetMin = (min/10)*16+min%10;
-        uint8_t SetSec = (sec/10)*16+sec%10;
+        uint8_t  SetYear = (year/16)*16+year%16;
+        uint8_t SetMonth = (month/16)*16+month%16;
+        uint8_t SetDay = (day/16)*16+day%16;
+        uint8_t SetHour = (hour/16)*16+hour%16;
+        uint8_t SetMin = (min/16)*16+min%16;
+        uint8_t SetSec = (sec/16)*16+sec%16;
         uint8_t b[] = {0xAA,0x07,0x00,SetYear,SetMonth,SetDay,SetHour,SetMin,SetSec,0x07+0x00+SetYear+SetMonth+SetDay+SetHour+SetSec+SetMin,0x55};
         NSMutableData *data = [[NSMutableData alloc] initWithBytes:b length:11];
         [self writeValue:0x1899 characteristicUUID:0x2A99 p:_activePeripheral data:data];
     }
 }
+
 #pragma mark--开始实时数据传输
 -(void)getRealTimeData
 {
+    SportsDataDAO *DAO=[SportsDataDAO shareManager];
+    if([DAO removeAllSportsData]==0)
+    {
+        NSLog(@"删除实时数据缓存成功");
+    }
     uint8_t b[]={0xAA,0x02,0x01,0x00,0x03,0x55};
     NSMutableData *data=[[NSMutableData alloc]initWithBytes:b length:6];
+    
     [self writeValue:0x1899 characteristicUUID:0x2A99 p:self.activePeripheral data:data];
     [_sportsTimer setFireDate:[NSDate distantPast]];
-    
+    //[self.delegate setZeroTimerRun];
+    [self.delegate setTimerRun];
 }
 
-#pragma mark--结束实时数据传输
+#pragma mark--暂停实时数据传输
 -(void)endReciveRealTimeData
 {
     uint8_t b[]={0xAA,0x02,0x01,0x01,0x04,0x55};
     NSMutableData *data=[[NSMutableData alloc]initWithBytes:b length:6];
     [self writeValue:BLE_SERVICE characteristicUUID:BLE_CHARACTERISTICS p:self.activePeripheral data:data];
+//    SportsDataDAO *DAO=[SportsDataDAO shareManager];
+//    [DAO updateLastDataTime:(int)_sportsSeconds];
+  //  _sportsSeconds=0;
+    [_sportsTimer setFireDate:[NSDate distantFuture]];
+    //[self.delegate setZeroTimerFire];
+    [self.delegate setTimerFire];
+}
+
+#pragma mark--结束实时数据传输
+-(void)finishRealTimeSports
+{
+    uint8_t b[]={0xAA,0x02,0x01,0x02,0x05,0x55};
+    NSMutableData *data=[[NSMutableData alloc]initWithBytes:b length:6];
+    [self writeValue:BLE_SERVICE characteristicUUID:BLE_CHARACTERISTICS p:self.activePeripheral data:data];
+    SportsDataDAO *DAO=[SportsDataDAO shareManager];
+    [DAO updateLastDataTime:(int)_sportsSeconds];
     _sportsSeconds=0;
     [_sportsTimer setFireDate:[NSDate distantFuture]];
 }
+
 #pragma mark--同步历史数据
 -(void)synHistoryData
 {
@@ -388,12 +594,13 @@
     NSMutableData *data=[[NSMutableData alloc]initWithBytes:b length:5];
     [self writeValue:BLE_SERVICE characteristicUUID:BLE_CHARACTERISTICS p:self.activePeripheral data:data];
 }
+
 #pragma mark--同步当前电量
 -(void)synCurrentBatteryQuantity
 {
-    uint8_t b[]={0xAA,0x02,0x03,0x03,0x55};
+    uint8_t b[]={0xAA,0x02,0x03,0x05,0x55};
     NSMutableData *data=[[NSMutableData alloc]initWithBytes:b length:6];
-    [self writeValue:BLE_SERVICE characteristicUUID:BLE_CHARACTERISTICS p:self.activePeripheral data:data];
+    [self writeValue:BLE_BATTERY_SERVICE characteristicUUID:BLE_BATTERY_CHARACTERISTICS p:self.activePeripheral data:data];
 }
 
 -(CBService *) findServiceFromUUID:(CBUUID *)UUID p:(CBPeripheral *)p
@@ -418,7 +625,17 @@
 
 
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
-    
+    if (error==nil) {
+        NSLog(@"用户手动断开的");
+    }
+    else {
+        NSLog(@"意外断开连接了%@",error);
+        UIAlertView *alertView=[[UIAlertView alloc]initWithTitle:@"与硬件断开连接了!" message:nil delegate:nil cancelButtonTitle:@"知道了" otherButtonTitles: nil];
+        [alertView show];
+        if (self.delegate) {
+            [self.CM connectPeripheral:self.activePeripheral options:nil];
+        }
+    }
 }
 
 
@@ -472,7 +689,7 @@
     }
     //    [p writeValue:data forCharacteristic:characteristic type:CBCharacteristicWriteWithoutResponse]; //TI
     [p writeValue:data forCharacteristic:self.writeCharacteristic type:CBCharacteristicWriteWithResponse];  //ISSC
-    NSLog(@"data=%@",data);
+    NSLog(@"手机给外设发送数据:%@",data);
 }
 
 -(void)readValue: (int)serviceUUID characteristicUUID:(int)characteristicUUID p:(CBPeripheral *)p
@@ -680,22 +897,49 @@
     sportsData.count=[NSNumber numberWithInteger:count];
     sportsData.time=[NSNumber numberWithInteger:time];
     sportsData.heat=[NSNumber numberWithFloat:heat];
-    sportsData.group=[NSNumber numberWithFloat:0];
     sportsData.date=date;
-    
-//    NSMutableArray *resListData=[DAO findAll];
-//    if ([resListData count]>0) {
-//        SportsData *theLastData=[resListData lastObject];
-//        sportsData.group=[NSNumber numberWithInteger:([theLastData.group integerValue]+1)];
-//    }
-//    else sportsData.group=date;
-    
     if ([DAO create:sportsData]==0) {
         NSLog(@"实时数据保存到CoreDate成功了");
         return YES;
     }
     else return NO;
 }
+-(BOOL)saveResultData:(NSDate*)startDate
+            TotalTime:(NSInteger)time
+           TotalCount:(NSInteger)count
+            TotalHeat:(float)heat
+            AverageIn:(float)intesity
+                MaxIn:(float)maxIn
+            AverageHz:(float)averageHz
+                MaxHz:(float)maxHz
+{
+    
+    ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    ResultData *resultData=[[ResultData alloc]init];
+    resultData.startDate=startDate;
+    resultData.totalTime=[NSNumber numberWithInteger:time];
+    resultData.totalCount=[NSNumber numberWithInteger:count];
+    resultData.totalHeat=[NSNumber numberWithFloat:heat];
+    resultData.averageIn=[NSNumber numberWithFloat:intesity];
+    resultData.maxIn=[NSNumber numberWithFloat:maxIn];
+    resultData.averageHz=[NSNumber numberWithFloat:averageHz];
+    resultData.maxHz=[NSNumber numberWithFloat:maxHz];
 
+    if ([DAO create:resultData]==0) {
+        NSLog(@"历史数据保存到CoreDate成功了");
+        return YES;
+    }
+    else return NO;
 
+}
+
+-(BOOL)saveResultData:(ResultData*)model
+{
+    ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    if ([DAO create:model]==0) {
+        NSLog(@"历史数据保存到CoreDate成功了");
+        return YES;
+    }
+    else return NO;
+}
 @end

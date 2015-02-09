@@ -17,8 +17,12 @@
 
 - (NSMutableArray *)reloadCalendarView:(NSDate *)date  selectDate:(NSDate *)date1 needDays:(int)days_number;
 - (void)selectLogic:(CalendarDayModel *)day;
--(NSMutableArray *) findDataFromCoreDataWithYearAndMonth
-                     :(NSInteger)year
-                    Month:(NSInteger)month;
--(NSMutableArray*)findAllSportsDataFromCoreData;
+//-(NSMutableArray*)findAllSportsDataFromCoreData;
+-(NSMutableArray*)findAllResultData;
+-(NSMutableArray *) findDataWithYearAndMonth:(NSInteger)year
+                                    Month:(NSInteger)month;
+
+-(NSMutableArray*) findDataWithDay:(NSInteger)day
+                              Year:(int)year
+                             Month:(int)month;
 @end

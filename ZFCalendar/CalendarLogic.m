@@ -10,6 +10,7 @@
 
 #import "CalendarLogic.h"
 #import "SportsDataDAO.h"
+#import "ResultDataDAO.h"
 
 @interface CalendarLogic ()
 {
@@ -32,8 +33,28 @@
 {
     //days_number=365  date=[NSDate date]
     //如果为空就从当天的日期开始
+    ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    NSArray *dataList=[DAO findAll];
+    if ([dataList count]==0) {
+        return nil;
+    }
+    for (ResultData *data in dataList) {
+        NSDate *datex= data.startDate;
+        NSDateComponents *dayDate=[datex YMDComponents];
+        NSLog(@"时间为:%ld年%ld月%ld日",(long)dayDate.year,(long)dayDate.month,(long)dayDate.day);
+    }
+    
+    ResultData *resultData=[[DAO findAll] objectAtIndex:0];
+    //[DAO remove:resultData];
     if(date == nil){
-        date = [NSDate date];
+        date =resultData.startDate;
+        NSDateComponents *dayDate=[date YMDComponents];
+        NSLog(@"第一条数据的时间为:%ld年%ld月%ld日",(long)dayDate.year,(long)dayDate.month,(long)dayDate.day);
+        if (dayDate.month==0) {
+            NSLog(@"月份不能为0");
+            //[DAO remove:resultData];
+            return nil;
+        }
     }
     
     //默认选择中的时间
@@ -135,42 +156,33 @@
     NSDateFormatter* formatter = [[NSDateFormatter alloc]init];
     [formatter setDateFormat:@"YYYY-MM-dd HH:mm:ss"];
     dateA = [formatter stringFromDate:date];
-    NSLog(@"dateA=%@",dateA);
+    //NSLog(@"dateA=%@",dateA);
     
-    NSMutableArray *sportsMonthDateList=
-    [self findDataFromCoreDataWithYearAndMonth:year Month:month];
     
     for (int i = 1; i < daysCount + 1; ++i) {
         CalendarDayModel *calendarDay = [CalendarDayModel calendarDayWithYear:components.year month:components.month day:i];
-        
-//        calendarDay.Chinese_calendar = [self LunarForSolarYear:components.year Month:components.month Day:i];
-        NSDateComponents *componentss = [[calendarDay date] YMDComponents];//今天日期的年月日
 
-        calendarDay.week = [[calendarDay date]getWeekIntValueWithDate];
-       // [self LunarForSolarYear:calendarDay];
-        //查找这一天的数据
+        NSDateComponents *componentss = [[calendarDay date] YMDComponents];//今天日期的年月日
+        NSLog(@"%d年%d月%d日" ,componentss.year,componentss.month,componentss.day);
         
-        if (/* DISABLES CODE */ (1)/*[sportsDateList containsObject:componentss]*/) {
-            //查找这一天的数据
+        calendarDay.week = [[calendarDay date]getWeekIntValueWithDate];
+         //查找这一天的数据
             NSMutableArray *dayList=[[NSMutableArray alloc]initWithCapacity:0];
-           dayList=[self findDataFromMonthDataWithDay:[componentss day] MonthSportsDataList:sportsMonthDateList];
+        dayList=[self findDataWithDay:componentss.day Year:componentss.year Month:componentss.month];
             if ([dayList count]>0) {
                 calendarDay.style=CellDayExistData;
-                calendarDay.sportsDataList=dayList;
+                calendarDay.resultDataList=dayList;
             }
             else calendarDay.style=CellDayNoData;
-           // calendarDay.style=CellDayExistData;
-           //int index=[sportsDateList indexOfObject:components];
-        }
-       // [self changStyle:calendarDay];
         [array addObject:calendarDay];
     }
 }
 
 #pragma -mark 从缓存去寻找存在的数据
--(NSMutableArray*)findAllSportsDataFromCoreData
+-(NSMutableArray*)findAllResultData
 {
-    SportsDataDAO *DAO=[SportsDataDAO shareManager];
+   ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    
     NSMutableArray *dataList=[DAO findAll];
     if ([dataList count]==0) {
         NSLog(@"用户还没有产生任何历史数据");
@@ -179,90 +191,27 @@
     NSLog(@"用户总共产生的历史数据有%d条",[dataList count]);
     return dataList;
 }
--(NSMutableArray *) findDataFromCoreDataWithYearAndMonth:(NSInteger)year
+//查找某一月的数据
+-(NSMutableArray *) findDataWithYearAndMonth:(NSInteger)year
                                                    Month:(NSInteger)month
 {
     
-    NSMutableArray *dataList=[self findAllSportsDataFromCoreData];
-    if ([dataList count]==0) {
-        return NULL;
-    }
-    NSMutableArray  *sportsDateList=[[NSMutableArray alloc]initWithCapacity:0];
-    for (NSInteger i=0; i<[dataList count]; i++) {
-       SportsData *data= [dataList objectAtIndex:i];
-        NSDateComponents *components = [data.date YMDComponents];//这天日期的年月日
-        NSInteger year_=[components year];
-        NSInteger month_=[components month];
-        if ((month_==month)&&(year_==year)) {
-            //[sportsDateList addObject:components];
-            [sportsDateList addObject:data];//存储用户运动数据对象
-        }
-    }
-    
-    NSLog(@"%d年%d月找到%d条运动数据缓存(总共的历史数据有:%d条)",year,month,[sportsDateList count],[dataList count]);
-    return sportsDateList;
-    
+    ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    NSMutableArray *dataList=[DAO findResultDataWithYearAndMonth:year Month:month];
+    return dataList;
 }
-//根据某一个月查找某一天的数据
-
--(NSMutableArray*) findDataFromMonthDataWithDay:(NSInteger)day
-                            MonthSportsDataList:(NSMutableArray*)list
-{
-//    NSInteger year=[components year];
-//    NSInteger month=[components month];
-//    NSInteger day=[components day];
-//  NSMutableArray *monthSportsDataList=[self findDataFromCoreDataWithYearAndMonth:year Month:month];
-    
-    NSMutableArray *monthSportsDataList=list;
-    
-    //NSMutableArray *dayDataList=
-    //今天的第一条数据在本月数据数组中处于何位置
-    //NSInteger index=[monthSportsDataList indexOfObject:components];
-    //NSLog(@"今天的第一条数据在本月所有数据中处于第%d条",index+1);
-//    NSInteger i=0;
-//    for (i=index; i<[monthDataList count]; i++) {
-//        if ([monthDataList objectAtIndex:i]==components) {
-//            i++;
-//        }
-//        else break;//最终的i就是今天总共有多少条数据
-//    }
-//    return dataList;
-//                          NSDateComponents *components
-    NSMutableArray *dayDataArray=[[NSMutableArray alloc]initWithCapacity:0];
-    
-    for (NSInteger i=0; i<[monthSportsDataList count]; i++) {
-        SportsData *data= [monthSportsDataList objectAtIndex:i];//得到用户运动数据对象
-        NSDateComponents *components = [data.date YMDComponents];//这次历史数据的年月日
-//        NSInteger year_=[components year];
-//        NSInteger month_=[components month];
-        NSInteger day_=[components day];
-        if (day_==day) {
-            [dayDataArray addObject:data];//把这一天的数据放入这个数组中
-        }
-    }
-    return dayDataArray;
-}
-
 //查找某一天的数据
--(NSMutableArray*) findDataFromCoreDataWithYearAndMonthAndDay:(NSInteger)year
-                                                        Month:(NSInteger)month
-                                                          Day:(NSInteger)day
+-(NSMutableArray*) findDataWithDay:(NSInteger)day
+                                           Year:(int)year
+                                          Month:(int)month
+
 {
-    NSMutableArray *dayDataArray=[[NSMutableArray alloc]initWithCapacity:0];
-    //数组中存储的是用户运动数据对象
-  NSMutableArray *monthDataList=[self findDataFromCoreDataWithYearAndMonth:year Month:month];
-    for (NSInteger i=0; i<[monthDataList count]; i++) {
-       SportsData *data= [monthDataList objectAtIndex:i];//得到用户运动数据对象
-        NSDateComponents *components = [data.date YMDComponents];//这次历史数据的年月日
-        NSInteger year_=[components year];
-        NSInteger month_=[components month];
-        NSInteger day_=[components month];
-        if ((year_==year)&&(month_==month)&&(day_==day)) {
-            [dayDataArray addObject:data];//把这一天的数据放入这个数组中
-        }
-    }
-    return dayDataArray;
+    ResultDataDAO *DAO=[ResultDataDAO shareManager];
+    NSMutableArray *dataList=[DAO findResultDataWithYearAndMonthAndDay:year Month:month Day:day];
+    return dataList;
 }
+
+
 - (void)changStyle:(CalendarDayModel *)calendarDay
 {
     

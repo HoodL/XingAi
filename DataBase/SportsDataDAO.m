@@ -31,7 +31,6 @@ static SportsDataDAO *shareManager;
     [data setValue:model.heat forKey:@"heat"];
     [data setValue:model.intensity forKey:@"intensity"];
     [data setValue:model.date forKey:@"date"];
-    [data setValue:model.group forKey:@"group"];
     NSError *saveingError=nil;
     if ([self.managedObjectContext save:&saveingError]) {
         NSLog(@"插入数据成功");
@@ -67,7 +66,6 @@ static SportsDataDAO *shareManager;
         data.date=mo.date;
         data.heat=mo.heat;
         data.time=mo.time;
-        data.group=mo.group;
         [resListData addObject:data];
     }
     return resListData;
@@ -119,6 +117,59 @@ static SportsDataDAO *shareManager;
         }
     }
     return 0;
+}
+
+-(int)removeAllSportsData
+{
+    NSManagedObjectContext *cxt=[self managedObjectContext];
+    
+    NSEntityDescription *entityDescription=[NSEntityDescription entityForName:@"SportsData" inManagedObjectContext:cxt];
+    NSFetchRequest *request=[[NSFetchRequest alloc]init];
+    [request setEntity:entityDescription];
+    
+    //    NSPredicate *predicate=[NSPredicate predicateWithFormat:@"count = %@",model.startDate];
+    //    [request setPredicate:predicate];
+    
+    NSError *error = nil;
+    NSArray *listData=[cxt executeFetchRequest:request error:&error];
+    if ([listData count]>0) {
+        for (DataManagedObject *data in listData)
+        {
+            [self.managedObjectContext deleteObject:data];
+        }
+        NSError *saveError = nil;
+        if ([self.managedObjectContext save:&saveError]) {
+            NSLog(@"删除所有SportsData数据成功");
+        }
+        else {
+            NSLog(@"删除所有SportsData数据失败");
+            return -1;
+        }
+    }
+    return 0;
+}
+//修改最后一条的数据的时间
+-(BOOL)updateLastDataTime:(int)time
+{
+    NSManagedObjectContext *cxt=[self managedObjectContext];
+    
+    NSEntityDescription *entityDescription=[NSEntityDescription entityForName:@"SportsData" inManagedObjectContext:cxt];
+    NSFetchRequest *request=[[NSFetchRequest alloc]init];
+    [request setEntity:entityDescription];
+    
+    NSError *error = nil;
+    NSArray *listData=
+    [cxt executeFetchRequest:request error:&error];
+    DataManagedObject *data=[listData lastObject];
+    data.time=[NSNumber numberWithInt:time];
+    
+    if ([cxt save:&error]) {
+        //更新成功
+       // NSLog(@"更新时间成功");
+        return YES;
+    }
+    
+    return NO;
 }
 
 @end

@@ -13,7 +13,6 @@
 @end
 
 @implementation ArcView
-
 -(id)initWithFrame:(CGRect)frame backColor:(UIColor *)backColor progressColor:(UIColor *)progressColor lineWidth:(CGFloat)lineWidth
 {
     self=[super initWithFrame:frame];

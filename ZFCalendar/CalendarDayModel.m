@@ -13,13 +13,13 @@
 
 
 //公共的方法
-+ (CalendarDayModel *)calendarDayWithYear:(NSUInteger)year month:(NSUInteger)month day:(NSUInteger)day SportsDataList:(NSArray*)list
++ (CalendarDayModel *)calendarDayWithYear:(NSUInteger)year month:(NSUInteger)month day:(NSUInteger)day ResultDataList:(NSMutableArray*)list
 {
     CalendarDayModel *calendarDay = [[CalendarDayModel alloc] init];//初始化自身
     calendarDay.year = year;//年
     calendarDay.month = month;//月
     calendarDay.day = day;//日
-    calendarDay.sportsDataList=list;
+    calendarDay.resultDataList=list;
     return calendarDay;
 }
 

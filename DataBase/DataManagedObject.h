@@ -17,7 +17,6 @@
 @property (nonatomic, retain) NSNumber * time;
 @property (nonatomic, retain) NSNumber * intensity;
 @property (nonatomic, retain) NSNumber * heat;
-@property (nonatomic, retain) NSNumber * group;
 @property (nonatomic, retain) NSDate   * date;
 
 @end

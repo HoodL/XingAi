@@ -13,21 +13,23 @@
 #import "CalendarDayCell.h"
 //MODEL
 #import "CalendarDayModel.h"
-#import "DataGroup.h"
 #import "HistoryDataVC.h"
-#import "SportsDataDAO.h"
+#import "ResultDataDAO.h"
 
 @interface CalendarViewController ()
 <UICollectionViewDataSource,UICollectionViewDelegate,UITableViewDataSource,UITableViewDelegate>
 {
 
-    // NSTimer* timer;//定时器
 
 }
-@property(nonatomic,retain) DataGroup *dayModelCellData;
+
 @property(nonatomic,retain) UITableView *  dayDataTableView;
 @property(nonatomic,retain) UIView *tableHeaderView;
 @property(nonatomic,retain) UILabel *headerLabel;
+@property(nonatomic,retain) NSMutableArray *resultDataList;
+//被选中的那一天的年月日
+@property(nonatomic,strong) NSDateComponents *selectedDayDate;
+
 @end
 
 @implementation CalendarViewController
@@ -39,11 +41,13 @@ static NSString *DayCell = @"DayCell";
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
+   /* if(!self)*/ {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
         // Custom initialization
         [self initData];
         [self initView];
+    }
     }
     return self;
 }
@@ -88,13 +92,10 @@ static NSString *DayCell = @"DayCell";
 
 }
 
-
-
 -(void)initData{
     
     self.calendarMonth = [[NSMutableArray alloc]init];//每个月份的数组
-    //self.dataList=[[NSMutableArray alloc]init];
-    _dayModelCellData=[[DataGroup alloc]init];
+    self.resultDataList=[[NSMutableArray alloc]initWithCapacity:0];
 }
 //设置表头
 -(void)initTableHeaderView
@@ -111,9 +112,10 @@ static NSString *DayCell = @"DayCell";
 
 //定义展示的Section的个数
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
+
 {
     //1.
-    NSLog(@"2calendarMonth.count=%d",_calendarMonth.count);
+    NSLog(@"calendarMonth.count=%lu",(unsigned long)_calendarMonth.count);
     return self.calendarMonth.count;
 }
 
@@ -122,7 +124,7 @@ static NSString *DayCell = @"DayCell";
 {
     //2,3,4,5,6,7,8...13. 每个section都要执行一遍这个回调
     NSMutableArray *monthArray = [self.calendarMonth objectAtIndex:section];
-    
+   // NSLog(@"有%d各月",[monthArray count]);
     return monthArray.count;
 }
 
@@ -160,7 +162,7 @@ static NSString *DayCell = @"DayCell";
         CalendarDayModel *model = [month_Array objectAtIndex:15];
 
         CalendarMonthHeaderView *monthHeader = [collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:MonthHeader forIndexPath:indexPath];
-        monthHeader.masterLabel.text = [NSString stringWithFormat:@"%d年 %d月",model.year,model.month];//@"日期";
+        monthHeader.masterLabel.text = [NSString stringWithFormat:@"%lu年 %lu月",(unsigned long)model.year,(unsigned long)model.month];//@"日期";
 //        monthHeader.backgroundColor = [[UIColor clearColor] colorWithAlphaComponent:0.8f];
         monthHeader.backgroundColor=[UIColor clearColor];
         reusableview = monthHeader;
@@ -189,14 +191,13 @@ static NSString *DayCell = @"DayCell";
     if (model.style == CellDayExistData) {
         dispatch_queue_t queue=dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
         dispatch_async(queue, ^{
-            NSLog(@"[model.sportsDataList count]=%d",[model.sportsDataList count]);
-            _dayModelCellData=[[DataGroup alloc]initWithDataList:model.sportsDataList];
-            SportsData *sportsData=[model.sportsDataList objectAtIndex:0];
-            NSDate *date=sportsData.date;
-            NSDateComponents *components = [date YMDComponents];//今天日期的年月日
-            int year=[components year];
-            int month=[components month];
-            int day=[components day];
+            NSLog(@"[model.resultDataList count]=%d",[model.resultDataList count]);
+            _resultDataList=model.resultDataList;
+            NSDate *date=model.date;
+            _selectedDayDate = [date YMDComponents];//今天日期的年月日
+            int year=[_selectedDayDate year];
+            int month=[_selectedDayDate month];
+            int day=[_selectedDayDate day];
             dispatch_async(dispatch_get_main_queue(), ^{
                 _headerLabel.text=[NSString stringWithFormat:@"%d年%d月%d日",year,month,day];
                 [_dayDataTableView reloadData];
@@ -216,6 +217,7 @@ static NSString *DayCell = @"DayCell";
        
     }
 }
+
 //返回这个UICollectionView是否可以被选择
 -(BOOL)collectionView:(UICollectionView *)collectionView shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
@@ -298,7 +300,7 @@ static NSString *DayCell = @"DayCell";
 }
 -(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return _dayModelCellData.group;
+    return [_resultDataList count];
 }
 
 -(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -308,7 +310,7 @@ static NSString *DayCell = @"DayCell";
 
 -(UITableViewCell*)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSString *ID=[NSString stringWithFormat:@"%d%d",[indexPath section],[indexPath row]];
+    NSString *ID=[NSString stringWithFormat:@"%ld%ld",(long)[indexPath section],(long)[indexPath row]];
 //    static NSString *reuseIdetify = @"SvTableViewCell";
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:ID];
     if (!cell) {
@@ -320,31 +322,15 @@ static NSString *DayCell = @"DayCell";
         UILabel *OnCellLabel=[[UILabel alloc]initWithFrame:CGRectMake(90, 7, 120, 30)];
         OnCellLabel.textAlignment=NSTextAlignmentCenter;
         [cell.contentView addSubview:OnCellLabel];
-        //取得下标
-       NSNumber *indexNum= [_dayModelCellData.indexList objectAtIndex:row];
-        int index=[indexNum intValue];
-        //这一行的数据 就是这一组数据的开头
-       SportsData *indexData= [_dayModelCellData.dataList objectAtIndex:index];
-//        NSDateComponents *components
-//        =[indexData.date HMSComponents];//今天日期的年月日
-//        int hour=[components hour];
-//        int minute=[components minute];
-//        int second=[components second];
-        
-//        NSLog(@"本次记录的次数:%d,本次记录的时间:%d:%d:%d",[indexData.count intValue],hour,minute,second);
-        
+       
+        ResultData *data=[_resultDataList objectAtIndex:row];
         NSDateFormatter* formatter = [[NSDateFormatter alloc]init];
         [formatter setDateFormat:@"HH:mm:ss"];
-//    NSLog(@"对比时间:%@",
-//          [formatter stringFromDate:indexData.date]);
         OnCellLabel.text
-        =[formatter stringFromDate:indexData.date];
-        
-//       OnCellLabel.text=
-//        [NSString stringWithFormat:@"%d:%d:%d",hour,minute,second];
+        =[formatter stringFromDate:data.startDate];
+        //NSLog(@"OnCellLabel.text=%@",OnCellLabel.text);
         cell.backgroundView=[[UIImageView alloc]initWithImage:[UIImage imageNamed:@"日历弹出框-横条"]];
         cell.selectedBackgroundView=[[UIImageView alloc]initWithImage:[UIImage imageNamed:@"日历弹出框-横条点击效果"]];
-//
     }
     return cell;
 }
@@ -353,75 +339,28 @@ static NSString *DayCell = @"DayCell";
 //{
 //    return @"哈哈哈哈哈哈哈哈哈哈哈";
 //}
+
 -(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    //先取这天的数据有多少组
-    int group= _dayModelCellData.group;
-    int row= [indexPath row];
-    NSLog(@"row=%d",row);
-    //取得下标
-    NSNumber *indexNum= [_dayModelCellData.indexList objectAtIndex:row];
-    int index=[indexNum intValue];
-    //这一行的数据 就是这一组数据的开头
-//    SportsData *indexData= [_dayModelCellData.dataList objectAtIndex:index];//取得开头的那个数据对象
-    //取开头这个数据的count
-   // int count=[indexData.count intValue];
+    NSInteger row= [indexPath row];
     
-    NSNumber *nextDataIndexNum;int thisGroupDataTotalCount;
-    //取下一组数据的开头
-    if(row<group-1)
-    {
-    nextDataIndexNum= [_dayModelCellData.indexList objectAtIndex:(row+1)];
-        //那么这一组数据的个数为：(这就是运动次数）
-    thisGroupDataTotalCount=[nextDataIndexNum intValue]-index;
-    }
-    
-    else {
-        thisGroupDataTotalCount=[_dayModelCellData.dataList count]-index;
-    }
-    NSLog(@"thisGroupDataTotalCount=%d",thisGroupDataTotalCount);
-    NSLog(@"_dayModelCellData.dataList=%d",[_dayModelCellData.dataList count]);
-    
-    //计算5个指数(次数已经有了)
-    //算平均频率
-    float averageHz=0.f,HzSum=0.f,intensitySum=0.f,averageIn=0.f;
-    
-    for (int i=index; i<(thisGroupDataTotalCount+index); i++) {
-        SportsData *data_=[_dayModelCellData.dataList objectAtIndex:i];
-        HzSum=HzSum+[data_.hz floatValue];
-        intensitySum=intensitySum+[data_.intensity floatValue];
-    }
-    averageHz= HzSum/thisGroupDataTotalCount;
-    averageIn=intensitySum/thisGroupDataTotalCount;
-    //本次运动的时间是
-    SportsData *theLastSportsData=[_dayModelCellData.dataList objectAtIndex:(index+thisGroupDataTotalCount-1)];
-    NSInteger time=[theLastSportsData.time integerValue];
-    SportsData *resultDataShowOnView
-    =[self createSportsDataWithData:thisGroupDataTotalCount Time:time Intensity:averageIn HZ:averageHz Heat:0.f];
+    ResultData *data=[_resultDataList objectAtIndex:row];
     
     HistoryDataVC *vc=[[HistoryDataVC alloc]initWithNibName:@"HistoryDataVC" bundle:nil];
-    vc.data=resultDataShowOnView;
     [self.navigationController pushViewController:vc animated:YES];
-    vc.data=resultDataShowOnView;
-
+    vc.bottomTimeLableData=
+    [NSString stringWithFormat:@"%d.%d.%d",_selectedDayDate.year,_selectedDayDate.month,_selectedDayDate.day];
+    
+    vc.data=data;
+    vc.block=^{
+        [_resultDataList removeObjectAtIndex:row];
+        [_dayDataTableView reloadData];
+        //[_collectionView reloadData];
+    };
 }
 
 -(void)clickCancelButton {
     [_recordView removeFromSuperview];
 }
 
--(SportsData*) createSportsDataWithData:(int)count
-                               Time:(int)time
-                          Intensity:(float)intensity
-                                 HZ:(float)hz
-                               Heat:(float)heat
-{
-    SportsData *sportsData=[[SportsData alloc]init];
-    sportsData.count=[NSNumber numberWithInt:count];
-    sportsData.intensity=[NSNumber numberWithInt:intensity];
-    sportsData.hz=[NSNumber numberWithFloat:hz];
-    sportsData.time=[NSNumber numberWithInt:time];
-    sportsData.heat=[NSNumber numberWithFloat:heat];
-    return sportsData;
-}
 @end

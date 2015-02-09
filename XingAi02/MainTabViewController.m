@@ -18,10 +18,13 @@
 #import "SliderViewController.h"
 #import "BLEControl.h"
 #import "DeviceVC.h"
+#import "InWave.h"
+#import "InAndHz.h"
+#import "SportsDataDAO.h"
+#import "ResultDataDAO.h"
 
 @interface MainTabViewController ()<UIScrollViewDelegate,UIGestureRecognizerDelegate,UITextFieldDelegate>
 {
-    CalendarHomeViewController *chvc;
     
 }
 
@@ -37,6 +40,10 @@
 @property(nonatomic,retain)UIButton *startButton;
 @property(nonatomic,retain)BLEControl *bleControl;
 @property(nonatomic,retain)UILabel *score;//用户给自己打分
+@property(nonatomic,retain)UIScrollView *scrollView;
+@property(nonatomic,retain)InWave *inWave;
+@property(retain,nonatomic)UILabel *sportTime;
+@property(retain,nonatomic)UILabel *sportDistance;
 @end
 
 @implementation MainTabViewController
@@ -53,24 +60,13 @@
     [self initBleControl];
     [self initMarkScoreButton];
     [self initScoreLabel];
-    //[self initGesture];
     NSLog(@"width=%f",[UIScreen mainScreen].bounds.size.width);
     NSLog(@"heigth=%f",[UIScreen mainScreen].bounds.size.height);
-    //NSLog(@"heigth=%f",SCREEN_HEIGTH);
-    //NSLog(@"heigth=%f",SCREEN_WIDTH);
 
     [UIApplication sharedApplication].statusBarStyle=UIStatusBarStyleLightContent;
     [self setNeedsStatusBarAppearanceUpdate];
     [self addPanGestureRecognizer];
     _Arc.backgroundColor=[UIColor clearColor];
-    //[self.view addSubview:_Arc];
-    //_Arc.pagingEnabled=YES;
-    /*if (!iPhone5) {
-        self.Arc.frame=CGRectMake(self.view.frame.origin.x, self.view.frame.origin.y, self.view.frame.size.width, 480);
-    }
-    self.Arc.delegate=self;
-    _Arc.showsHorizontalScrollIndicator=NO;
-    _Arc.showsVerticalScrollIndicator=YES;*/
     _mainScrollView.contentSize=CGSizeMake(self.view.bounds.size.width,(self.view.bounds.size.height)*3);
     //第二屏
     UIImageView *secondBG=[[UIImageView alloc]initWithFrame:CGRectMake(0,(self.view.frame.size.height),self.view.frame.size.width,self.view.frame.size.height)];
@@ -85,33 +81,44 @@
     UIImageView *scale=[[UIImageView alloc]initWithFrame:CGRectMake(0, secondBG.frame.origin.y+100, self.view.frame.size.width, 36)];
     scale.image=[UIImage imageNamed:@"主页-上滑标尺"];
     [_mainScrollView addSubview:scale];
+    //加UIScrollView
+    _scrollView=[[UIScrollView alloc]initWithFrame:CGRectMake(0, secondBG.frame.origin.y+100+36, SCREEN_WIDTH, 181)];
+    _scrollView.contentSize=CGSizeMake(1000, 181);
+    _scrollView.backgroundColor=[UIColor clearColor];
+    [_mainScrollView addSubview:_scrollView];
+    _inWave=[[InWave alloc]initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 181)];
+    [_scrollView addSubview:_inWave];
+    _inWave.backgroundColor=[UIColor clearColor];
+    [self  DrawInWave];
+    
     // 右侧刻度
     UIImageView *rightScale=[[UIImageView alloc]initWithFrame:CGRectMake(self.view.frame.size.width-33/2, scale.frame.origin.y+scale.frame.size.height, 33/2, 181)];
     rightScale.image=[UIImage imageNamed:@"主页-上滑右侧刻度"];
     [_mainScrollView addSubview:rightScale];
     //运动时间和下方文字
-    UILabel *sportTime=[[UILabel alloc]initWithFrame:CGRectMake((self.view.frame.size.width/2)-100, rightScale.frame.origin.y+181+50,200, 50)];
-    sportTime.text=@"12:03:20";
-    sportTime.textAlignment=NSTextAlignmentCenter;
-    sportTime.textColor=[UIColor whiteColor];
-    sportTime.font=[UIFont systemFontOfSize:50];
-    [_mainScrollView addSubview:sportTime];
-    UILabel *sportDistance=[[UILabel alloc]initWithFrame:CGRectMake((self.view.frame.size.width/2)-120, sportTime.frame.origin.y+50, 240, 50)];
-    sportDistance.text=@"你的运动距离相当于5公里路程";
-    sportDistance.textAlignment=NSTextAlignmentCenter;
-    sportDistance.textColor=[UIColor whiteColor];
-    sportDistance.font=[UIFont systemFontOfSize:15];
-    [_mainScrollView addSubview:sportDistance];
+    _sportTime=[[UILabel alloc]initWithFrame:CGRectMake((self.view.frame.size.width/2)-100, rightScale.frame.origin.y+181+50,200, 50)];
+    _sportTime.text=@"";
+    _sportTime.textAlignment=NSTextAlignmentCenter;
+    _sportTime.textColor=[UIColor whiteColor];
+    _sportTime.font=[UIFont systemFontOfSize:50];
+   // [_mainScrollView addSubview:_sportTime];
+    _sportDistance=[[UILabel alloc]initWithFrame:CGRectMake((self.view.frame.size.width/2)-120, _sportTime.frame.origin.y+50, 240, 50)];
+    _sportDistance.text=@"";
+    _sportDistance.textAlignment=NSTextAlignmentCenter;
+    _sportDistance.textColor=[UIColor whiteColor];
+    _sportDistance.font=[UIFont systemFontOfSize:15];
+   // [_mainScrollView addSubview:_sportDistance];
     //第三屏上写星爱建议suggestion
     //图标和大字
     UIImageView *suggestionLogo=[[UIImageView alloc]initWithFrame:CGRectMake((self.view.frame.size.width)/2-33/2, 20, 33, 33)];
     suggestionLogo.image=[UIImage imageNamed:@"星爱建议icon"];
     UILabel *suggestionLabel=[[UILabel alloc]initWithFrame:CGRectMake((self.view.frame.size.width)/2-50, 64, 100, 25)];
+    
     suggestionLabel.text=@"星爱建议";
     suggestionLabel.textAlignment=NSTextAlignmentCenter;
     [thirdBG addSubview:suggestionLabel];
     [thirdBG addSubview:suggestionLogo];
-
+    thirdBG.userInteractionEnabled=YES;
     CGSize maxSize=CGSizeMake(self.view.frame.size.width-40, 999);
    NSString *text1=@"我们希望一些事情非常高效，但我们不得不承认下面建议是正确的:慢下来,小伙子！“性爱并不是一场比赛,因此要慢慢地去探索她”;";
     UIFont *font=[UIFont systemFontOfSize:14];
@@ -166,6 +173,8 @@
     UIButton *deviceButton=[[UIButton alloc]initWithFrame:CGRectMake(20, suggestionLael4.frame.origin.y+suggestionLael4.frame.size.height+30, 128, 47)];
     [deviceButton setBackgroundImage:[UIImage imageNamed:@"主页-上滑透明按钮"] forState:UIControlStateNormal];
     [thirdBG addSubview:deviceButton];
+    //点击设备
+    [deviceButton addTarget:self action:@selector(clickDeviceButton) forControlEvents:UIControlEventTouchUpInside];
     UIImageView *deviceImageView=[[UIImageView alloc]initWithFrame:CGRectMake(15, 7, 33, 33)];
     deviceImageView.image=[UIImage imageNamed:@"主页-上滑设备"];
     [deviceButton addSubview:deviceImageView];
@@ -178,6 +187,9 @@
     UIButton *recordButton=[[UIButton alloc]initWithFrame:CGRectMake(self.view.frame.size.width-20-128, suggestionLael4.frame.origin.y+suggestionLael4.frame.size.height+30, 128, 47)];
     [recordButton setBackgroundImage:[UIImage imageNamed:@"主页-上滑透明按钮"] forState:UIControlStateNormal];
     [thirdBG addSubview:recordButton];
+    //点击记录
+    [recordButton addTarget:self action:@selector(clickRecordButton) forControlEvents:UIControlEventTouchUpInside];
+
     UIImageView *recordImageView=[[UIImageView alloc]initWithFrame:CGRectMake(15, 7, 33, 33)];
     recordImageView.image=[UIImage imageNamed:@"主页-上滑记录"];
     [recordButton addSubview:recordImageView];
@@ -192,42 +204,73 @@
     [thirdBG addSubview:whiteLogo];
 }
 
+-(void)clickDeviceButton
+{
+    DeviceVC *vc=[[DeviceVC alloc]initWithNibName:@"DeviceVC" bundle:nil];
+    [[SliderViewController sharedSliderController].navigationController pushViewController:vc animated:YES];
+    
+}
+
+-(void)clickRecordButton
+{
+    
+       CalendarHomeViewController *vc = [[CalendarHomeViewController alloc]init];
+        //vc.calendartitle = @"飞机";
+        [vc setAirPlaneToDay:365 ToDateforString:nil];//飞机初始化方法
+    
+    
+    vc.calendarblock = ^(CalendarDayModel *model){
+        
+        NSLog(@"\n---------------------------");
+        NSLog(@"选择了%@%@",[model toString],[model getWeek]);
+        NSLog(@"\n---------------------------");
+        
+    };
+    
+    [[SliderViewController sharedSliderController].navigationController pushViewController:vc animated:YES];
+}
+
+-(NSString*)transformTimeFormat:(NSInteger)seconds
+{
+    NSInteger hour=seconds/3600;
+    NSInteger minute=(seconds%3600)/60;
+    NSInteger second=seconds%60;
+    
+    NSString *hourStr=hour<10?[NSString stringWithFormat:@"0%ld",(long)hour]:[NSString stringWithFormat:@"%ld",(long)hour];
+    NSString *minuteStr=minute<10?[NSString stringWithFormat:@"0%ld",(long)minute]:[NSString stringWithFormat:@"%ld",(long)minute];
+    NSString *secondStr=second<10?[NSString stringWithFormat:@"0%ld",(long)second]:[NSString stringWithFormat:@"%ld",(long)second];
+    NSString *text=[NSString stringWithFormat:@"%@:%@:%@",hourStr,minuteStr,secondStr];
+    return text;
+}
+#pragma mark-- 画波形DrawInWave
+-(void)DrawInWave {
+    dispatch_queue_t queue=dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    dispatch_async(queue, ^{
+        SportsDataDAO *DAO=[SportsDataDAO shareManager];
+        NSMutableArray *dataList=[DAO findAll];
+        _inWave.dataList=dataList;
+        
+        //SportsData *data=[dataList lastObject];
+        ResultDataDAO *DAO1=[ResultDataDAO shareManager];
+      NSMutableArray *list=  [DAO1 findAll];
+        ResultData *data1=[list lastObject];
+       // int time= [data.time integerValue];
+        int time= [data1.totalTime integerValue];
+        
+        NSString *timeStr=[self transformTimeFormat:time];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [_inWave callDrawWithData];
+            _sportTime.text=timeStr;
+            _sportDistance.text=
+            [NSString stringWithFormat:@"%@%0.1f%@",@"你的运动距离相当于",(float)(time*3)/1000,@"公里路程"];
+        });
+    });
+}
+
 -(void) addPanGestureRecognizer {
     //[self.view addGestureRecognizer:panGestureRecognizer];
 }
-- (void)handlePanGesture:(UIPanGestureRecognizer *)recognizer
-{
-    
-    // if you have left and right sidebar, you can control the pan gesture by start point.
-    if (recognizer.state == UIGestureRecognizerStateBegan) {
-        CGPoint startPoint = [recognizer locationInView:self.view];
-        
-        // Left SideBar
-        if (startPoint.x < self.view.bounds.size.width / 2.0) {
-            //self.sideBar.isCurrentPanGestureTarget = YES;
-        }
-        // Right SideBar
-        else {
-            if (!chvc) {
-                chvc = [[CalendarHomeViewController alloc]init];
-                chvc.calendartitle = @"飞机";
-                [chvc setAirPlaneToDay:365 ToDateforString:nil];//飞机初始化方法
-            }
-            chvc.calendarblock = ^(CalendarDayModel *model){
-                
-                NSLog(@"\n---------------------------");
-                NSLog(@"1星期 %@",[model getWeek]);
-                NSLog(@"2字符串 %@",[model toString]);
-                NSLog(@"3节日  %@",model.holiday);
-            };
-            [self.navigationController pushViewController:chvc animated:YES];
-            // self.rightSideBar.isCurrentPanGestureTarget = YES;
-        }
-    }
-    
-    [self.sideBar handlePanGestureToShow:recognizer inView:self.view];
-    
-}
+
 -(void)initSuggestion {
     
 }
@@ -285,6 +328,8 @@
     if (_bleControl.activePeripheral.state== CBPeripheralStateConnected) {
         NSLog(@"蓝牙已经连接,可以开始实时统计数据了");
         WaveViewController *vc=[[WaveViewController alloc]initWithNibName:@"WaveViewController" bundle:nil];
+        [SliderViewController sharedSliderController].navigationController.interactivePopGestureRecognizer.enabled = NO;
+
         [[SliderViewController sharedSliderController].navigationController pushViewController:vc animated:YES];
     }
     else {
@@ -324,6 +369,7 @@ clickedButtonAtIndex:(NSInteger)buttonIndex
 }
 
 - (IBAction)clickSyButton:(id)sender {
+    return;
     _bleControl=[BLEControl sharedBLEControl];
     if (_bleControl.activePeripheral.state==CBPeripheralStateDisconnected) {
         UIAlertView *alert=[[UIAlertView alloc]initWithTitle:@"您还未连接星爱哦" message:@"是否现在连接" delegate:self cancelButtonTitle:@"现在连接" otherButtonTitles:@"不了，谢谢", nil];
@@ -343,21 +389,20 @@ clickedButtonAtIndex:(NSInteger)buttonIndex
 }
 
 - (IBAction)clickCalendar {
-    if (!chvc) {
-        chvc = [[CalendarHomeViewController alloc]init];
-        chvc.calendartitle = @"飞机";
-        [chvc setAirPlaneToDay:365 ToDateforString:nil];//飞机初始化方法
-    }
-    chvc.calendarblock = ^(CalendarDayModel *model){
+    
+       CalendarHomeViewController*  vc = [[CalendarHomeViewController alloc]init];
+        //vc.calendartitle = @"飞机";
+        [vc setAirPlaneToDay:365 ToDateforString:nil];//飞机初始化方法
+    
+    vc.calendarblock = ^(CalendarDayModel *model){
         
         NSLog(@"\n---------------------------");
         NSLog(@"选择了%@%@",[model toString],[model getWeek]);
         NSLog(@"\n---------------------------");
         
     };
-    chvc.modalTransitionStyle=UIModalTransitionStyleFlipHorizontal;
-//    [self presentViewController:chvc animated:YES completion:^{}];
-    [[SliderViewController sharedSliderController].navigationController pushViewController:chvc animated:YES];
+    
+    [[SliderViewController sharedSliderController].navigationController pushViewController:vc animated:YES];
 }
 
 - (IBAction)clickMenuButton:(id)sender {
@@ -507,6 +552,7 @@ _mainScrollView=[[UIScrollView alloc]initWithFrame:self.view.bounds];
     _score.text=[NSString stringWithFormat:@"%d",score];
 };
 //打分按钮
+
 -(void)initMarkScoreButton
 {
     _markScoreButton=[[UIButton alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-120)/2, 180, 120, 50)];
@@ -639,6 +685,7 @@ _mainScrollView=[[UIScrollView alloc]initWithFrame:self.view.bounds];
         [_shareButton setImage:[UIImage imageNamed:@"主页-分享点亮"] forState:UIControlStateNormal];
     });
 }
+
 -(void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
     if ([(__bridge NSString*)context isEqualToString:@"statechanged"]) {
@@ -648,6 +695,8 @@ _mainScrollView=[[UIScrollView alloc]initWithFrame:self.view.bounds];
     _markScoreButton.hidden=NO;
     _score.hidden=YES;
     _Arc.score=0;
+    [_Arc updateProgressCircle];
+    [self DrawInWave];
 }
 
 @end

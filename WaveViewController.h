@@ -22,6 +22,6 @@
 @property(nonatomic,assign)BOOL isEndGetReciveData;
 - (IBAction)clickStartButton:(id)sender;
 - (IBAction)clickReturnButton:(id)sender;
-
+@property (strong, nonatomic) IBOutlet UIButton *returnButton;
 
 @end

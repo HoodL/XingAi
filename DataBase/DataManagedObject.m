@@ -17,5 +17,4 @@
 @dynamic intensity;
 @dynamic heat;
 @dynamic date;
-@dynamic group;
 @end

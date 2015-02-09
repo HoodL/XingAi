@@ -13,7 +13,7 @@
 #define SCREEN_HEIGHT ([UIScreen mainScreen].bounds.size.height)
 
 
-@interface DeviceVC : UIViewController<BleControlDelegate>
+@interface DeviceVC : UIViewController
 @property (strong, nonatomic) IBOutlet UIImageView *bgImageView;
 @property (strong, nonatomic) IBOutlet UIButton *returnButton;
 - (IBAction)clickReturnButton:(id)sender;
@@ -24,5 +24,5 @@
 - (IBAction)clickScanButton:(id)sender;
 - (IBAction)shishiButton:(id)sender;
 @property (strong, nonatomic) IBOutlet UIButton *scanButton;
-
+@property(nonatomic,strong) UILabel *butteryPercent;
 @end

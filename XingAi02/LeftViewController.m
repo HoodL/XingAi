@@ -72,7 +72,9 @@
 //    _tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, headerIV.bottom + 50, self.view.width, self.view.height - headerIV.bottom - 80) style:UITableViewStylePlain];
     
      _tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, headerIV.bottom + 50, self.view.width, 222) style:UITableViewStylePlain];
-    
+   // _tableView.contentSize=CGSizeMake(_tableView.frame.size.width, 0);
+    _tableView.scrollEnabled=NO;
+    //_tableView
     _tableView.dataSource = self;
     _tableView.delegate = self;
     [_tableView setBackgroundColor:[UIColor clearColor]];
@@ -185,7 +187,6 @@
             DeviceVC *vc=[[DeviceVC alloc]initWithNibName:@"DeviceVC" bundle:nil];
             vc.tagComingFromWhichVC=2;
             [self.navigationController pushViewController:vc animated:YES];
-//            [self presentViewController:vc animated:NO completion:^{}];
             break;
         }
         case 2:
@@ -194,8 +195,8 @@
              CalendarHomeViewController *chvc;
             if (!chvc) {
                 chvc = [[CalendarHomeViewController alloc]init];
-                chvc.calendartitle = @"飞机";
-                [chvc setAirPlaneToDay:365 ToDateforString:nil];//飞机初始化方法
+                //chvc.calendartitle = @"飞机";
+                [chvc setAirPlaneToDay:365 ToDateforString:nil];//
             }
             chvc.calendarblock = ^(CalendarDayModel *model){
                 
@@ -204,10 +205,8 @@
                 NSLog(@"2字符串 %@",[model toString]);
                 NSLog(@"3节日  %@",model.holiday);
             };
-//            CalendarViewController *vc=[[CalendarViewController alloc]init];
             [[SliderViewController sharedSliderController].navigationController
              pushViewController:chvc animated:YES];
-            //[self.navigationController pushViewController:chvc animated:YES];
             break;
         }
         case 3:

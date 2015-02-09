@@ -10,5 +10,7 @@
 #define XingAi02_BLEDefine_h
 #define BLE_SERVICE (0x1899)
 #define BLE_CHARACTERISTICS (0x2A99)
+#define BLE_BATTERY_SERVICE  (0x180f)
+#define BLE_BATTERY_CHARACTERISTICS  (0x2A19)
 
 #endif

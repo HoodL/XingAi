@@ -17,5 +17,7 @@
 -(int)create:(SportsData*)model;
 -(NSMutableArray*) findAll;
 -(int) remove :(SportsData*)model;
+-(int)removeAllSportsData;
+-(BOOL)updateLastDataTime:(int)time;
 
 @end

@@ -36,10 +36,10 @@ typedef NS_ENUM(NSInteger, CollectionViewCellDayType) {
 
 @property (nonatomic, strong) NSString *Chinese_calendar;//农历
 @property (nonatomic, strong) NSString *holiday;//节日
-@property (nonatomic,strong) NSArray *sportsDataList;
+@property (nonatomic,strong) NSMutableArray *resultDataList;
 
 + (CalendarDayModel *)calendarDayWithYear:(NSUInteger)year month:(NSUInteger)month day:(NSUInteger)day;
-+ (CalendarDayModel *)calendarDayWithYear:(NSUInteger)year month:(NSUInteger)month day:(NSUInteger)day SportsDataList:(NSArray*)list;
++ (CalendarDayModel *)calendarDayWithYear:(NSUInteger)year month:(NSUInteger)month day:(NSUInteger)day ResultDataList:(NSArray*)list;
 
 - (NSDate *)date;//返回当前天的NSDate对象
 - (NSString *)toString;//返回当前天的NSString对象

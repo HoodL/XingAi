@@ -25,6 +25,8 @@
 @property(nonatomic,retain)UILabel *sportsIntensityData;
 @property(nonatomic,retain)UILabel *sportsHzData;
 @property(nonatomic,retain)UILabel *sportsCountData;
+@property(nonatomic,retain)UIButton *pauseButton;
+@property(nonatomic,retain)UIButton *finishButton;
 
 @end
 
@@ -32,21 +34,31 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+   // self.navigationController.interactivePopGestureRecognizer.enabled = NO;
+//    self.navigationItem.leftBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(clickReturnButton:)];
+
+    _returnButton.userInteractionEnabled=NO;
     [self addObserver:[SliderViewController sharedSliderController].MainVC forKeyPath:@"isEndGetReciveData" options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:@"Pass Contex"];
     _isEndGetReciveData=NO;
     // Do any additional setup after loading the view from its nib.
-    _wave = [[DrawWave alloc] initWithFrame:CGRectMake((SCREEN_WIDTH-300)/2, 100, 300, 375)];
+    _wave = [[DrawWave alloc] initWithFrame:CGRectMake(0, 90, SCREEN_WIDTH, 36+360)];
     _wave.clipsToBounds = YES;
     _wave.backgroundColor=[UIColor clearColor];
     [self.view addSubview:_wave];
     
-    _wave1=[[DrawData alloc] initWithFrame:CGRectMake((SCREEN_WIDTH-300)/2, 100, 300, 375)];
+    UIImageView *scaleImageView=[[UIImageView alloc]initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 36)];
+    
+    scaleImageView.image=[UIImage imageNamed:@"主页-上滑标尺"];
+    [_wave addSubview:scaleImageView];
+    
+    _wave1=[[DrawData alloc] initWithFrame:CGRectMake(0, 90+36, SCREEN_WIDTH, 360)];
     _wave1.clipsToBounds = YES;
     _wave1.backgroundColor=[UIColor clearColor];
     [self.view addSubview:_wave1];
     
     timer=[NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(detectionVoice) userInfo:nil repeats:YES];
-//    setZeroTimer=[NSTimer scheduledTimerWithTimeInterval:2.0 target:self selector:@selector(setDataLabelZero) userInfo:nil repeats:YES];
+    //[self setTimerFire];
+//    setZeroTimer=[NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(detectionVoice) userInfo:nil repeats:YES];
     _bleControl=[BLEControl sharedBLEControl];
     _bleControl.delegate=self;
     _label=[[UILabel alloc]initWithFrame:CGRectMake(20, 450, 280, 100)];
@@ -60,6 +72,16 @@
     [self initDataLabel];
     //开启一个后台线程，调用执行startReciveRealTimeData方法
     [self performSelectorInBackground:@selector(startReciveRealTimeData) withObject:nil];
+}
+
+-(void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:YES];
+    self.navigationController.interactivePopGestureRecognizer.enabled = YES;
+}
+
+-(void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:YES];
+    self.navigationController.interactivePopGestureRecognizer.enabled = NO;
 }
 
 -(void) initLabel
@@ -131,34 +153,83 @@
     _sportsHzData.backgroundColor=[UIColor clearColor];
     [self.view addSubview:_sportsHzData];
     
-    UIButton *StopButton=[[UIButton alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-123)/2, 425, 123, 33)];
-    [StopButton setImage:[UIImage imageNamed:@"stop"] forState:UIControlStateNormal];
-    [self.view addSubview:StopButton];
-    [StopButton addTarget:self action:@selector(clickStop) forControlEvents:UIControlEventTouchUpInside];
-
+    _pauseButton=[[UIButton alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-66)/2, 425+36-3-40, 66, 66)];
+//    [StopButton setImage:[UIImage imageNamed:@"stop"] forState:UIControlStateNormal];
+    [self.view addSubview:_pauseButton];
+    [_pauseButton setImage:[UIImage imageNamed:@"暂停"] forState:UIControlStateNormal];
+//    [_pauseButton setTitle:@"暂 停" forState:UIControlStateNormal];
+//    [_pauseButton setTitleColor:[UIColor clearColor] forState:UIControlStateNormal];
+    [_pauseButton addTarget:self action:@selector(clickPauseButton) forControlEvents:UIControlEventTouchUpInside];
+    
+    _finishButton=[[UIButton alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-60)/2+80, 425+36-3, 60, 33)];
+    //    [StopButton setImage:[UIImage imageNamed:@"stop"] forState:UIControlStateNormal];
+    [self.view addSubview:_finishButton];
+    [_finishButton setTitle:@"完 成" forState:UIControlStateNormal];
+    [_finishButton setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
+    [_finishButton addTarget:self action:@selector(clickFinishButton) forControlEvents:UIControlEventTouchUpInside];
 }
 
--(void)clickStop {
-    [_bleControl endReciveRealTimeData];
-
+-(void)clickPauseButton {
+    if ([_pauseButton.imageView.image isEqual:[UIImage imageNamed:@"暂停"]]) {
+        [_pauseButton setImage:[UIImage imageNamed:@"开始"] forState:UIControlStateNormal];
+        [_bleControl endReciveRealTimeData];
+    }
+    else {
+        [_pauseButton setImage:[UIImage imageNamed:@"暂停"] forState:UIControlStateNormal];
+        [_bleControl getRealTimeData];
+    }
+//    if ([_pauseButton.titleLabel.text isEqualToString:@"暂 停"]) {
+//        [_bleControl endReciveRealTimeData];
+//        [_pauseButton setTitle:@"开 始" forState:UIControlStateNormal];
+//        [_pauseButton setImage:[UIImage imageNamed:@"开始"] forState:UIControlStateNormal];
+//    }
+//    else if([_pauseButton.titleLabel.text isEqualToString:@"开 始"])
+//    {
+//        [_bleControl getRealTimeData];
+//        [_pauseButton setTitle:@"暂 停" forState:UIControlStateNormal];
+//        [_pauseButton setImage:[UIImage imageNamed:@"暂停"] forState:UIControlStateNormal];
+//
+//    }
 }
+
+-(void)clickFinishButton
+{
+    [_bleControl finishRealTimeSports];
+    _pauseButton.userInteractionEnabled=NO;
+    _returnButton.userInteractionEnabled=YES;
+    _finishButton.userInteractionEnabled=NO;
+    
+    self.isEndGetReciveData=YES;
+    [self.navigationController popToRootViewControllerAnimated:YES];
+    _bleControl.delegate=nil;
+    UIAlertView *alert=[[UIAlertView alloc]initWithTitle:@"请您对本次结果打分"message:nil delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    [alert show];
+    //先存个默认的分数0分
+    dispatch_queue_t queue=dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    dispatch_async(queue, ^{
+        [self saveZeroInUserScoreCoreDate];
+    });
+}
+
 -(void)addCountNum:(NSInteger)num
-         Intensity:(NSInteger)intensity
+         Intensity:(float)intensity
                 Hz:(float)hz
 {
-    _sportsCountData.text=[NSString stringWithFormat:@"%d",num];
+    _sportsCountData.text=[NSString stringWithFormat:@"%ld",(long)num];
     _sportsIntensityData.text
-    =[NSString stringWithFormat:@"%d",intensity];
-    _sportsHzData.text=[NSString stringWithFormat:@"%f",hz];
+    =[NSString stringWithFormat:@"%0.1f",intensity];
+    _sportsHzData.text=[NSString stringWithFormat:@"%0.1f",hz];
     
 }
+
 -(void)renewSportsTime {
     NSString *timeStr=[self transformTimeFormat:_bleControl.sportsSeconds];
     _sportsTimeData.text=timeStr;
 }
+
 -(void)detectionVoice
 {
-  [_wave callDraw:1];
+  //[_wave callDraw:1];
   [_wave1 addZeroNum];
 }
 //清零
@@ -237,6 +308,7 @@ dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAU
     //[_bleControl endReciveRealTimeData];
     self.isEndGetReciveData=YES;
 [self.navigationController popToRootViewControllerAnimated:YES];
+    _bleControl.delegate=nil;
     UIAlertView *alert=[[UIAlertView alloc]initWithTitle:@"请您对本次结果打分"message:nil delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
     [alert show];
     //先存个默认的分数0分
@@ -271,5 +343,12 @@ dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAU
         return YES;
     }
     else return NO;
+}
+-(void)autoPopCurrentVC
+{
+    [self.navigationController popToRootViewControllerAnimated:YES];
+    UIAlertView *alert=[[UIAlertView alloc]initWithTitle:@"请您对本次结果打分"message:nil delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    [alert show];
+    _bleControl.delegate=nil;
 }
 @end

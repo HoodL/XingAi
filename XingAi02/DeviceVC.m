@@ -9,19 +9,22 @@
 #import "DeviceVC.h"
 #import "WaveViewController.h"
 #import "BDKNotifyHUD.h"
-@interface DeviceVC ()<UITableViewDelegate,UITableViewDataSource,BleControlDelegate>
+@interface DeviceVC ()<UITableViewDelegate,UITableViewDataSource,BLEDeviceControlDelegate>
 {
     BOOL isLink;
+    int butteryPercentNum;
 }
 @property(nonatomic,retain)UIImageView *HUDImageView;
 @property(nonatomic,retain)UILabel *waitingLabel;//等待字样。
 @property(nonatomic,retain)BDKNotifyHUD *notify;
+
 @end
 
 @implementation DeviceVC
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.navigationController.interactivePopGestureRecognizer.enabled = NO;
     // Do any additional setup after loading the view from its nib.
     _deviceTabView.delegate=self;
     _deviceTabView.dataSource=self;
@@ -37,12 +40,14 @@
     [_bleControl scanClick];
     //[_bleControl scanClick];
 //    [_bleControl scanClick];
-    _deviceList=[[NSMutableArray alloc]initWithCapacity:10];
+    _deviceList=[[NSMutableArray alloc]initWithCapacity:0];
     [_deviceList removeAllObjects];
     if (_bleControl.activePeripheral!=nil) {
+        
         [_deviceList addObject:_bleControl.activePeripheral];
+       // [_deviceList addObject:device];
     }
-    _bleControl.delegate=self;
+    _bleControl.delegate2=self;
     isLink=NO;
     //旋转图:
     _HUDImageView=[[UIImageView alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-270)/2, (SCREEN_HEIGHT-270)/2, 270, 270)];
@@ -73,9 +78,10 @@
 
 -(UITableViewCell*)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    static NSString *reuseIdetify = @"SvTableViewCell";
+    //static NSString *reuseIdetify = @"SvTableViewCell";
+    NSString *reuseIdetify=[NSString stringWithFormat:@"%dcell",indexPath.row];
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuseIdetify];
-    if (!cell) {
+    if (/*!cell*/1) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:reuseIdetify];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.showsReorderControl = NO;
@@ -85,7 +91,7 @@
         //NSInteger row=[indexPath row];
         cell.accessoryType=UITableViewCellAccessoryNone;
             CBPeripheral *p = [_deviceList objectAtIndex:indexPath.row];
-        
+       // BLEDevice *device=[_deviceList objectAtIndex:indexPath.row];
         UIImageView *line=[[UIImageView alloc]initWithFrame:CGRectMake(0, 44, 290, 1)];
         line.image=[UIImage imageNamed:@"个人信息-分割线"];
         [cell addSubview:line];
@@ -95,20 +101,33 @@
         [cell addSubview:logo];
         
         UILabel *deviceName=[[UILabel alloc]initWithFrame:CGRectMake(50, 9.5, 150, 25)];
+        deviceName.font=[UIFont systemFontOfSize:12];
         deviceName.text=p.name;
+       // deviceName.text= device.peripheral.name;
         deviceName.textColor=[UIColor whiteColor];
         deviceName.textAlignment=NSTextAlignmentLeft;
         [cell addSubview:deviceName];
         
             label.textColor=[UIColor whiteColor];
             [cell.contentView addSubview:label];
-            UIButton *linkButton=[[UIButton alloc]initWithFrame:CGRectMake(200, 10, 56, 25)];
+            UIButton *linkButton=[[UIButton alloc]initWithFrame:CGRectMake(230, 10, 56, 25)];
             if (p.state==CBPeripheralStateConnected) {
                 NSLog(@"这个设备已经连接了");
                 [linkButton setBackgroundImage:[UIImage imageNamed:@"蓝牙-连接断开"] forState:UIControlStateNormal];
                 linkButton.tag=(indexPath.row);
                 isLink=YES;
+                //加电池标签:
+                _butteryPercent=[[UILabel alloc]initWithFrame:CGRectMake(170, 10, 100, 25)];
+                _butteryPercent.font=[UIFont systemFontOfSize:12];
+                _butteryPercent.textAlignment=NSTextAlignmentLeft;
+                //_butteryPercent.text=@"";
+                _butteryPercent.textColor=[UIColor whiteColor];
+               //_butteryPercent.text= [NSString stringWithFormat:@"电量%d%%",butteryPercentNum];
+                _butteryPercent.text= [NSString stringWithFormat:@"电量%d%%",self.bleControl.butteryPercent];
+                
+                [cell.contentView addSubview:_butteryPercent];
             }
+        
             else {
                 
            [linkButton setBackgroundImage:[UIImage imageNamed:@"蓝牙-连接"] forState:UIControlStateNormal];
@@ -122,10 +141,33 @@
     return cell;
 }
 
+- (void)tableView:(UITableView *)tableView
+didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+   // BLEDevice *device=[_deviceList objectAtIndex:indexPath.row];
+    CBPeripheral *peripheral=[_deviceList objectAtIndex:indexPath.row];
+    [self.bleControl connectPeripheral:peripheral];
+    _HUDImageView=[self rotateImageView:_HUDImageView];
+    _HUDImageView.hidden=NO;
+    _waitingLabel=[[UILabel alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-100)/2, _HUDImageView.frame.origin.y+270+10, 100, 30)];
+    _waitingLabel.text=@"连接中";
+    _waitingLabel.textColor=[UIColor whiteColor];
+    _waitingLabel.textAlignment=NSTextAlignmentCenter;
+    [self.view addSubview:_waitingLabel];
+
+}
+
 - (IBAction)clickReturnButton:(id)sender {
    
     [self.navigationController popViewControllerAnimated:YES];
-    
+    _bleControl.delegate2=nil;
+}
+
+#pragma -mark --代理方法
+-(void)synButteryPercent:(int)percent {
+    butteryPercentNum=percent;
+    //_butteryPercent.text= [NSString stringWithFormat:@"电量%d%%",percent];
+    [self.deviceTabView reloadData];
 }
 
 -(void)addPeripherals:(CBPeripheral *)peripheral {
@@ -133,9 +175,6 @@
      {
          [_deviceList addObject:peripheral];
          [_deviceTabView reloadData];
-//     NSLog(@"%@",[NSString stringWithFormat:@"已发现peripheral:%@, UUID: %@ ",peripheral,
-     //peripheral.identifier.UUIDString]);
-    // NSLog(@"%@",peripheral);
      NSLog(@"cell上的name=%@,state=%d",peripheral.name,peripheral.state);
      }
 }
@@ -165,12 +204,20 @@
 //        [sender setBackgroundImage:[UIImage imageNamed:@"蓝牙-断开"] forState:UIControlStateNormal];
 //
 //    }
+    
+   CBPeripheral *peripheral=[_deviceList objectAtIndex:btn.tag];
     if(isLink==YES) {
-        [self.bleControl disconnect:[_deviceList objectAtIndex:btn.tag]];
+       // [self.bleControl disconnect:[_deviceList objectAtIndex:btn.tag]];
+        [self.bleControl disconnect:peripheral];
+        UIAlertView *alertView=[[UIAlertView alloc]initWithTitle:@"断开连接成功" message:nil delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+        [alertView show];
+        isLink=NO;
+        [self.deviceTabView reloadData];
         //_bleControl.activePeripheralState=13;
     }
     else {
-        [self.bleControl connectPeripheral:[_deviceList objectAtIndex:(btn.tag)]];
+        [self.bleControl connectPeripheral:peripheral];
+//        [self.bleControl connectPeripheral:[_deviceList objectAtIndex:(btn.tag)]];
         _HUDImageView=[self rotateImageView:_HUDImageView];
         _HUDImageView.hidden=NO;
         _waitingLabel=[[UILabel alloc]initWithFrame:CGRectMake((SCREEN_WIDTH-100)/2, _HUDImageView.frame.origin.y+270+10, 100, 30)];
@@ -181,6 +228,7 @@
     }
 }
 -(void)removeLinkingHUDImageView {
+    [self.deviceTabView reloadData];
     [self displayNotification];
     _HUDImageView.hidden=YES;
     [_waitingLabel removeFromSuperview];
@@ -197,9 +245,10 @@
         //从左侧菜单点进来的
     }
 }
--(void)reloadUI {
-    [self.deviceTabView reloadData];
-}
+
+//-(void)reloadUI {
+//    [self.deviceTabView reloadData];
+//}
 //图片旋转
 
 -(UIImageView*)rotateImageView:(UIImageView*)imageView
@@ -222,6 +271,7 @@
 //    imageView.center=CGPointMake(160, 399);
     return imageView;
 }
+
 //提醒HUD
 - (BDKNotifyHUD *)notify {
     if (_notify != nil) return _notify;
